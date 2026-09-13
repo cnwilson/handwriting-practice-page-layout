@@ -160,6 +160,7 @@ input.ladder-big:focus{outline:none;border-bottom:1px solid var(--accent);color:
   box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06);
 }
 .sheet svg{display:block;width:100%;height:auto}
+.sheet.dup{display:none}
 .readout{
   font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--dimmer);
   text-align:center;max-width:600px;
@@ -183,6 +184,7 @@ input.ladder-big:focus{outline:none;border-bottom:1px solid var(--accent);color:
   .stage{display:block;padding:0;margin:0;overflow:visible;background:#fff}
   .sheet{max-width:none;width:auto;box-shadow:none;background:#fff}
   .sheet svg{width:var(--pw);height:var(--ph)}
+  body.notebook .sheet.dup{display:block;break-before:page;page-break-before:always}
 }
 </style>
 </head>
@@ -209,14 +211,31 @@ input.ladder-big:focus{outline:none;border-bottom:1px solid var(--accent);color:
           <option value="a4">A4 — 210 × 297 mm</option>
           <option value="a5">A5 — 148 × 210 mm</option>
           <option value="legal">US Legal — 8.5 × 14 in</option>
+          <option value="custom">Custom notebook — folds in half</option>
         </select>
       </div>
-      <div class="row">
+      <div class="row" id="rowOrient">
         <div class="row-head"><label>Orientation</label></div>
         <div class="seg" id="orient">
           <button type="button" data-v="p" aria-pressed="true">Portrait</button>
           <button type="button" data-v="l" aria-pressed="false">Landscape</button>
         </div>
+      </div>
+      <div class="row" id="rowCustW" hidden>
+        <div class="row-head"><label for="custW">Page width, after fold</label><span class="val" id="vCustW"></span></div>
+        <input type="range" id="custW" min="40" max="200" step="1" value="105">
+      </div>
+      <div class="row" id="rowCustH" hidden>
+        <div class="row-head"><label for="custH">Page height, after fold</label><span class="val" id="vCustH"></span></div>
+        <input type="range" id="custH" min="40" max="200" step="1" value="148">
+      </div>
+      <div class="row" id="rowFold" hidden>
+        <div class="row-head"><label>Fold direction</label></div>
+        <div class="seg" id="fold">
+          <button type="button" data-v="v" aria-pressed="true">Vertical — spine left</button>
+          <button type="button" data-v="h" aria-pressed="false">Horizontal — spine top</button>
+        </div>
+        <p class="note" id="foldNote"></p>
       </div>
       <div class="row">
         <div class="row-head"><label for="margin">Margin</label><span class="val" id="vMargin"></span></div>
@@ -322,6 +341,17 @@ input.ladder-big:focus{outline:none;border-bottom:1px solid var(--accent);color:
           <option value="dashed" selected>Dashed</option>
         </select>
       </div>
+      <div class="row">
+        <div class="row-head"><label for="baseColor">Baseline color</label></div>
+        <select id="baseColor">
+          <option value="">Match ink</option>
+          <option value="#8FD3EE">Non-photo blue</option>
+          <option value="#A9BBC9">Pale grey</option>
+          <option value="#6E7A85">Graphite</option>
+          <option value="#4A6FA5">Ink blue</option>
+          <option value="#1A1A1A">Black</option>
+        </select>
+      </div>
     </fieldset>
 
     <fieldset class="grp">
@@ -359,6 +389,7 @@ input.ladder-big:focus{outline:none;border-bottom:1px solid var(--accent);color:
 
   <section class="stage">
     <div class="sheet" id="sheet"></div>
+    <div class="sheet dup" id="sheetDup"></div>
     <div class="readout" id="readout"></div>
   </section>
 </div>
@@ -373,12 +404,13 @@ const PAGES={
 
 const S={
   page:"letter", landscape:false, margin:16,
+  custW:105, custH:148, fold:"v",
   mode:"nib", nib:1.5,
   x:5, asc:3, desc:3, gap:2,           // in current unit
   ratio:"std",                         // std = ascender & descender locked to 3/5 of x-height
   slant:8, showSlant:true, slantSp:12,
   showAsc:true, showWaist:true, showBase:true, showDesc:true,
-  heavyBase:true, waistStyle:"dashed",
+  heavyBase:true, waistStyle:"dashed", baseInk:"",
   ink:"#6E7A85", weight:0.18, opacity:75,
   header:"", footer:true
 };
@@ -443,10 +475,8 @@ $("in_ladder").addEventListener("keydown",e=>{
 });
 
 /* ---------- SVG build ---------- */
-function buildSVG(){
-  const p=PAGES[S.page];
-  let W=p.w,H=p.h; if(S.landscape){[W,H]=[H,W];}
-  const m=S.margin, L=m, R=W-m, T=m, B=H-m;
+function buildPanel(pw,ph,idSuffix){
+  const m=S.margin, L=m, R=pw-m, T=m, B=ph-m;
   const u=unitMM();
   const xh=S.x*u;
   const asc=S.asc*u, desc=S.desc*u, gap=S.gap*u;
@@ -463,8 +493,8 @@ function buildSVG(){
   const op=S.opacity/100, w=S.weight, ink=S.ink;
   let g="";
 
-  const line=(x1,y1,x2,y2,sw,o,dash)=>
-    `<line x1="${r2(x1)}" y1="${r2(y1)}" x2="${r2(x2)}" y2="${r2(y2)}" stroke="${ink}" stroke-width="${r3(sw)}" stroke-opacity="${r3(o)}"${dash?` stroke-dasharray="${dash}"`:""}/>`;
+  const line=(x1,y1,x2,y2,sw,o,dash,color)=>
+    `<line x1="${r2(x1)}" y1="${r2(y1)}" x2="${r2(x2)}" y2="${r2(y2)}" stroke="${color||ink}" stroke-width="${r3(sw)}" stroke-opacity="${r3(o)}"${dash?` stroke-dasharray="${dash}"`:""}/>`;
 
   const bands=[];
   for(let i=0;i<n;i++){
@@ -472,14 +502,15 @@ function buildSVG(){
     bands.push([t0,b1]);
     if(S.showAsc&&asc>0) g+=line(L,t0,R,t0,w*.85,op*.6);
     if(S.showWaist)      g+=line(L,waist,R,waist,w*.9,op*.75, S.waistStyle==="dashed"?"2.2 1.8":null);
-    if(S.showBase)       g+=line(L,base,R,base,S.heavyBase?w*1.7:w,Math.min(1,S.heavyBase?op*1.3:op));
+    if(S.showBase)       g+=line(L,base,R,base,S.heavyBase?w*1.7:w,Math.min(1,S.heavyBase?op*1.3:op),null,S.baseInk||ink);
     if(S.showDesc&&desc>0) g+=line(L,b1,R,b1,w*.85,op*.6);
   }
 
   let defs="";
   if(S.showSlant && n>0){
     const rad=S.slant*Math.PI/180, t=Math.tan(rad), sp=S.slantSp;
-    defs=`<clipPath id="bands">${bands.map(([a,b])=>
+    const clipId="bands_"+idSuffix;
+    defs=`<clipPath id="${clipId}">${bands.map(([a,b])=>
       `<rect x="${r2(L)}" y="${r2(a)}" width="${r2(R-L)}" height="${r2(b-a)}"/>`).join("")}</clipPath>`;
     let sl="";
     for(const [a,b] of bands){
@@ -487,17 +518,57 @@ function buildSVG(){
       const start=L-Math.ceil(shift/sp)*sp;
       for(let xb=start;xb<=R+1e-6;xb+=sp) sl+=line(xb,b,xb+shift,a,w*.8,op*.5);
     }
-    g+=`<g clip-path="url(#bands)">${sl}</g>`;
+    g+=`<g clip-path="url(#${clipId})">${sl}</g>`;
   }
 
   let extra="";
   if(headH) extra+=`<text x="${r2(L)}" y="${r2(T+5)}" font-family="Georgia, serif" font-size="4.2" fill="${ink}" fill-opacity="${r3(op*.8)}">${esc(S.header.trim())}</text>`;
   if(footH) extra+=`<text x="${r2(L)}" y="${r2(B-1.5)}" font-family="Helvetica, Arial, sans-serif" font-size="2.6" fill="${ink}" fill-opacity=".55" letter-spacing=".2">${esc(settingsLine())}</text>`;
 
-  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r2(W)} ${r2(H)}">`+
-    `<rect x="0" y="0" width="${r2(W)}" height="${r2(H)}" fill="#ffffff"/>`+
-    (defs?`<defs>${defs}</defs>`:"")+g+extra+`</svg>`;
+  const panelClipId="panel_"+idSuffix;
+  defs+=`<clipPath id="${panelClipId}"><rect x="0" y="0" width="${r2(pw)}" height="${r2(ph)}"/></clipPath>`;
+  const markup=`<defs>${defs}</defs><g clip-path="url(#${panelClipId})">${g}${extra}</g>`;
+  return {markup,n,band,xh};
+}
 
+function buildSVG(){
+  if(S.page==="custom"){
+    const pw=S.custW, ph=S.custH;
+    let sheetW,sheetH,off2;
+    if(S.fold==="v"){ sheetW=pw*2; sheetH=ph; off2=[pw,0]; }
+    else            { sheetW=pw;   sheetH=ph*2; off2=[0,ph]; }
+
+    const p1=buildPanel(pw,ph,"A");
+    const p2=buildPanel(pw,ph,"B");
+
+    const foldColor="#9AA7B2";
+    let fold="";
+    if(S.fold==="v"){
+      const x=pw;
+      fold+=`<line x1="${r2(x)}" y1="0" x2="${r2(x)}" y2="${r2(sheetH)}" stroke="${foldColor}" stroke-width="0.3" stroke-dasharray="1 1.6"/>`;
+      fold+=`<line x1="${r2(x-2.5)}" y1="1.5" x2="${r2(x+2.5)}" y2="1.5" stroke="${foldColor}" stroke-width="0.3"/>`;
+      fold+=`<line x1="${r2(x-2.5)}" y1="${r2(sheetH-1.5)}" x2="${r2(x+2.5)}" y2="${r2(sheetH-1.5)}" stroke="${foldColor}" stroke-width="0.3"/>`;
+    }else{
+      const y=ph;
+      fold+=`<line x1="0" y1="${r2(y)}" x2="${r2(sheetW)}" y2="${r2(y)}" stroke="${foldColor}" stroke-width="0.3" stroke-dasharray="1 1.6"/>`;
+      fold+=`<line x1="1.5" y1="${r2(y-2.5)}" x2="1.5" y2="${r2(y+2.5)}" stroke="${foldColor}" stroke-width="0.3"/>`;
+      fold+=`<line x1="${r2(sheetW-1.5)}" y1="${r2(y-2.5)}" x2="${r2(sheetW-1.5)}" y2="${r2(y+2.5)}" stroke="${foldColor}" stroke-width="0.3"/>`;
+    }
+
+    const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r2(sheetW)} ${r2(sheetH)}">`+
+      `<rect x="0" y="0" width="${r2(sheetW)}" height="${r2(sheetH)}" fill="#ffffff"/>`+
+      `<g transform="translate(0,0)">${p1.markup}</g>`+
+      `<g transform="translate(${r2(off2[0])},${r2(off2[1])})">${p2.markup}</g>`+
+      fold+`</svg>`;
+
+    return {svg,W:sheetW,H:sheetH,n:p1.n,band:p1.band,xh:p1.xh};
+  }
+
+  const p=PAGES[S.page];
+  let W=p.w,H=p.h; if(S.landscape){[W,H]=[H,W];}
+  const {markup,n,band,xh}=buildPanel(W,H,"single");
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r2(W)} ${r2(H)}">`+
+    `<rect x="0" y="0" width="${r2(W)}" height="${r2(H)}" fill="#ffffff"/>`+markup+`</svg>`;
   return {svg,W,H,n,band,xh};
 }
 const r2=n=>Math.round(n*100)/100, r3=n=>Math.round(n*1000)/1000;
@@ -505,8 +576,11 @@ const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&qu
 
 function settingsLine(){
   const u=S.mode==="nib"?"nw":"mm";
+  const sizeLabel = S.page==="custom"
+    ? `Custom ${fmt(S.custW)}×${fmt(S.custH)}mm (${S.fold==="v"?"vertical":"horizontal"} fold)`
+    : PAGES[S.page].name+(S.landscape?" landscape":"");
   const parts=[
-    PAGES[S.page].name+(S.landscape?" landscape":""),
+    sizeLabel,
     `x-height ${fmt(S.x)}${u}`,
     S.mode==="nib"?`nib ${S.nib}mm`:null,
     `asc ${S.asc}${u}`,`desc ${S.desc}${u}`,`gap ${S.gap}${u}`,
@@ -527,7 +601,10 @@ function render(){
   applyRatio();
   drawLadder();
   const {svg,W,H,n,band,xh}=buildSVG();
+  const isNotebook = S.page==="custom";
   $("sheet").innerHTML=svg;
+  $("sheetDup").innerHTML = isNotebook ? svg : "";
+  document.body.classList.toggle("notebook",isNotebook);
   document.documentElement.style.setProperty("--pw",W+"mm");
   document.documentElement.style.setProperty("--ph",H+"mm");
   $("pagestyle").textContent=`@page{size:${W}mm ${H}mm;margin:0}`;
@@ -535,12 +612,20 @@ function render(){
   $("readout").innerHTML = n>0
     ? `<b>${n}</b> lines &nbsp;·&nbsp; pitch <b>${r2(pitch)} mm</b> &nbsp;·&nbsp; band <b>${r1(band)} mm</b> &nbsp;·&nbsp; x-height <b>${r1(xh)} mm</b> &nbsp;·&nbsp; slant <b>${S.slant}°</b>`
     : `<span class="warn">Nothing fits — reduce the heights or the margin.</span>`;
+  if(isNotebook){
+    const flip = S.fold==="v" ? "long edge" : "short edge";
+    $("foldNote").innerHTML = `Flat sheet prints at <b>${fmt(W)} × ${fmt(H)} mm</b>, folding along the dashed centre line. `+
+      `For front and back to register, print two-sided with the flip set to <b>${flip}</b> `+
+      `— both sides carry identical ruling, so print one and check the header/margins land the same way on each face before running the stack.`;
+  }
   syncLabels();
 }
 
 /* ---------- numeric fields: drag on a grid, type anything ---------- */
 const FIELDS={
   margin  :{slider:"margin", val:"vMargin",  grid:1,    lo:0,    hi:80,  unit:"mm"},
+  custW   :{slider:"custW",  val:"vCustW",   grid:1,    lo:20,   hi:400, unit:"mm"},
+  custH   :{slider:"custH",  val:"vCustH",   grid:1,    lo:20,   hi:400, unit:"mm"},
   nib     :{slider:"nib",    val:"vNib",     grid:0.1,  lo:0.05, hi:20,  unit:"mm"},
   asc     :{slider:"asc",    val:"vAsc",     grid:0.5,  lo:0,    hi:40,  unit:"u"},
   desc    :{slider:"desc",   val:"vDesc",    grid:0.5,  lo:0,    hi:40,  unit:"u"},
@@ -642,8 +727,24 @@ const bindCheck=(id,key)=>{const el=$(id);el.checked=S[key];
 ["showSlant","showAsc","showWaist","showBase","showDesc","heavyBase","footer"]
   .forEach(k=>bindCheck(k,k));
 
-$("page").addEventListener("change",e=>{S.page=e.target.value;render();});
+$("page").addEventListener("change",e=>{
+  S.page=e.target.value;
+  const isCustom = S.page==="custom";
+  $("rowCustW").hidden=!isCustom;
+  $("rowCustH").hidden=!isCustom;
+  $("rowFold").hidden=!isCustom;
+  $("rowOrient").hidden=isCustom;
+  render();
+});
+
+$("fold").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  S.fold=b.dataset.v;
+  [...e.currentTarget.children].forEach(c=>c.setAttribute("aria-pressed",c===b));
+  render();
+});
 $("ink").addEventListener("change",e=>{S.ink=e.target.value;render();});
+$("baseColor").addEventListener("change",e=>{S.baseInk=e.target.value;render();});
 $("waistStyle").addEventListener("change",e=>{S.waistStyle=e.target.value;render();});
 $("header").addEventListener("input",e=>{S.header=e.target.value;render();});
 
