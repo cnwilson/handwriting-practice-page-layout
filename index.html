@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ruling — handwriting sheet generator</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet">
+<style id="pagestyle">@page{size:215.9mm 279.4mm;margin:0}</style>
+<style>
+:root{
+  --slate-900:#0E1620;
+  --slate-800:#141F2B;
+  --slate-750:#182533;
+  --slate-700:#1C2A38;
+  --edge:#26374A;
+  --edge-soft:#1F2E3D;
+  --text:#DEE8F0;
+  --dim:#89A0B5;
+  --dimmer:#5E7488;
+  --accent:#7ED1EE;
+  --accent-deep:#3E7F98;
+  --paper:#FCFBF8;
+  --pw:215.9mm; --ph:279.4mm;
+  --sans:"IBM Plex Sans",system-ui,sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,monospace;
+  --serif:"Instrument Serif",Georgia,serif;
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;background:var(--slate-900);color:var(--text);
+  font-family:var(--sans);font-size:14px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select{font:inherit;color:inherit}
+
+/* ---------- top bar ---------- */
+.bar{
+  display:flex;align-items:baseline;gap:16px;flex-wrap:wrap;
+  padding:14px 22px;border-bottom:1px solid var(--edge);
+  background:var(--slate-800);
+}
+.mark{font-family:var(--serif);font-style:italic;font-size:30px;line-height:1;letter-spacing:.01em}
+.mark em{font-style:italic;color:var(--accent)}
+.tagline{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--dimmer)}
+.bar-actions{margin-left:auto;display:flex;gap:8px;align-self:center}
+
+.btn{
+  border:1px solid var(--edge);background:var(--slate-700);border-radius:2px;
+  padding:8px 14px;font-size:13px;cursor:pointer;transition:background .12s,border-color .12s;
+}
+.btn:hover{background:var(--slate-600,#2A3A4B);border-color:var(--accent-deep)}
+.btn-key{background:var(--accent);border-color:var(--accent);color:#08141B;font-weight:600}
+.btn-key:hover{background:#9DDDF4;border-color:#9DDDF4}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* ---------- shell ---------- */
+body{display:flex;flex-direction:column}
+.shell{display:grid;grid-template-columns:340px 1fr;flex:1;min-height:0}
+.panel{
+  overflow-y:auto;padding:4px 20px 60px;border-right:1px solid var(--edge);
+  background:var(--slate-800);
+}
+.stage{
+  overflow-y:auto;padding:32px 32px 64px;display:flex;flex-direction:column;
+  align-items:center;gap:14px;background:
+    radial-gradient(120% 80% at 50% 0%,#16232F 0%,var(--slate-900) 70%);
+}
+
+/* ---------- control groups ---------- */
+.grp{border:0;padding:0;margin:26px 0 0}
+.grp legend{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--accent);padding:0 0 8px;
+}
+.grp + .grp{border-top:1px solid var(--edge-soft);padding-top:20px}
+
+.row{margin:0 0 14px}
+.row-head{display:flex;align-items:baseline;gap:8px;margin-bottom:5px}
+.row-head label{font-size:13px;color:var(--dim)}
+.val{margin-left:auto;font-family:var(--mono);font-size:12.5px;color:var(--text)}
+.val .u{color:var(--dimmer)}
+
+input[type=range]{
+  -webkit-appearance:none;appearance:none;width:100%;height:18px;background:transparent;cursor:pointer;margin:0;
+}
+input[type=range]::-webkit-slider-runnable-track{height:2px;background:var(--edge);border-radius:2px}
+input[type=range]::-moz-range-track{height:2px;background:var(--edge);border-radius:2px}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:14px;height:14px;border-radius:50%;background:var(--accent);
+  margin-top:-6px;border:2px solid var(--slate-800);
+}
+input[type=range]::-moz-range-thumb{
+  width:14px;height:14px;border-radius:50%;background:var(--accent);border:2px solid var(--slate-800);
+}
+
+select,input[type=text]{
+  width:100%;background:var(--slate-750);border:1px solid var(--edge);border-radius:2px;
+  padding:7px 9px;font-size:13px;
+}
+.seg{display:flex;border:1px solid var(--edge);border-radius:2px;overflow:hidden}
+.seg button{
+  flex:1;background:var(--slate-750);border:0;padding:7px 4px;font-size:12.5px;color:var(--dim);cursor:pointer;
+}
+.seg button[aria-pressed=true]{background:var(--accent-deep);color:#F2FBFF}
+.seg button + button{border-left:1px solid var(--edge)}
+
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chip{
+  border:1px solid var(--edge);background:transparent;border-radius:99px;
+  padding:4px 10px;font-family:var(--mono);font-size:11px;color:var(--dim);cursor:pointer;
+}
+.chip:hover{border-color:var(--accent-deep);color:var(--text)}
+.chip[aria-pressed=true]{background:var(--accent-deep);border-color:var(--accent-deep);color:#F2FBFF}
+
+.check{display:flex;align-items:center;gap:9px;margin:0 0 9px;font-size:13px;color:var(--dim);cursor:pointer}
+.check input{
+  appearance:none;-webkit-appearance:none;width:15px;height:15px;flex:none;
+  border:1px solid var(--edge);border-radius:2px;background:var(--slate-750);cursor:pointer;position:relative;
+}
+.check input:checked{background:var(--accent);border-color:var(--accent)}
+.check input:checked::after{
+  content:"";position:absolute;left:4px;top:1px;width:4px;height:8px;
+  border:solid #08141B;border-width:0 2px 2px 0;transform:rotate(42deg);
+}
+.note{font-size:11.5px;color:var(--dimmer);line-height:1.5;margin:6px 0 0}
+input.numin{
+  background:transparent;border:0;border-bottom:1px dashed var(--edge);border-radius:0;
+  font-family:var(--mono);font-size:12.5px;color:var(--text);
+  text-align:right;padding:0 1px;width:auto;min-width:2.4em;
+}
+input.numin:hover{border-bottom-color:var(--accent-deep)}
+input.numin:focus{outline:none;border-bottom:1px solid var(--accent);color:var(--accent)}
+input.numin:read-only{border-bottom-color:transparent;color:var(--dimmer)}
+input.ladder-big{
+  background:transparent;border:0;border-bottom:1px dashed var(--edge);border-radius:0;
+  width:2.8em;padding:0;text-align:left;
+}
+input.ladder-big:hover{border-bottom-color:var(--accent-deep)}
+input.ladder-big:focus{outline:none;border-bottom:1px solid var(--accent);color:var(--accent)}
+.row.derived input[type=range]{opacity:.35;pointer-events:none}
+.row.derived .row-head label{color:var(--dimmer)}
+.row.derived .val::after{content:" ⟵ 5:3:3";font-size:10px;color:var(--accent-deep);letter-spacing:.04em}
+
+/* ---------- the nib ladder ---------- */
+.ladder-wrap{display:flex;gap:16px;align-items:flex-end;margin-top:2px}
+.ladder{cursor:pointer;touch-action:none}
+.ladder:focus{outline:none}
+.ladder:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.ladder-side{padding-bottom:2px}
+.ladder-big{font-family:var(--mono);font-size:26px;line-height:1;color:var(--text)}
+.ladder-lab{font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--dimmer);margin-top:6px}
+.ladder-mm{font-family:var(--mono);font-size:12.5px;color:var(--accent);margin-top:10px}
+
+/* ---------- sheet ---------- */
+.sheet{
+  width:100%;max-width:600px;background:var(--paper);
+  box-shadow:0 18px 50px rgba(0,0,0,.55),0 0 0 1px rgba(255,255,255,.06);
+}
+.sheet svg{display:block;width:100%;height:auto}
+.readout{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.06em;color:var(--dimmer);
+  text-align:center;max-width:600px;
+}
+.readout b{color:var(--accent);font-weight:500}
+.warn{color:#E8B44C}
+
+@media (max-width:860px){
+  .shell{display:flex;flex-direction:column}
+  .panel{border-right:0;border-bottom:1px solid var(--edge);order:2}
+  .stage{order:1;padding:20px 16px 28px}
+  body{height:auto;display:block}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+/* ---------- print ---------- */
+@media print{
+  html,body{background:#fff;height:auto}
+  .bar,.panel,.readout{display:none!important}
+  .shell{display:block;height:auto}
+  .stage{display:block;padding:0;margin:0;overflow:visible;background:#fff}
+  .sheet{max-width:none;width:auto;box-shadow:none;background:#fff}
+  .sheet svg{width:var(--pw);height:var(--ph)}
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="mark">Ruling</div>
+  <div class="tagline">practice sheets, to the nib width</div>
+  <div class="bar-actions">
+    <button class="btn" id="btnSvg">Download SVG</button>
+    <button class="btn btn-key" id="btnPrint">Print sheet</button>
+  </div>
+</div>
+
+<div class="shell">
+  <aside class="panel">
+
+    <fieldset class="grp">
+      <legend>Paper</legend>
+      <div class="row">
+        <div class="row-head"><label for="page">Size</label></div>
+        <select id="page">
+          <option value="letter">US Letter — 8.5 × 11 in</option>
+          <option value="a4">A4 — 210 × 297 mm</option>
+          <option value="a5">A5 — 148 × 210 mm</option>
+          <option value="legal">US Legal — 8.5 × 14 in</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="row-head"><label>Orientation</label></div>
+        <div class="seg" id="orient">
+          <button type="button" data-v="p" aria-pressed="true">Portrait</button>
+          <button type="button" data-v="l" aria-pressed="false">Landscape</button>
+        </div>
+      </div>
+      <div class="row">
+        <div class="row-head"><label for="margin">Margin</label><span class="val" id="vMargin"></span></div>
+        <input type="range" id="margin" min="6" max="35" step="1" value="16">
+      </div>
+    </fieldset>
+
+    <fieldset class="grp">
+      <legend>Nib &amp; heights</legend>
+      <div class="row">
+        <div class="row-head"><label>Measure heights in</label></div>
+        <div class="seg" id="mode">
+          <button type="button" data-v="nib" aria-pressed="true">Nib widths</button>
+          <button type="button" data-v="mm" aria-pressed="false">Millimetres</button>
+        </div>
+      </div>
+
+      <div class="row" id="rowNib">
+        <div class="row-head"><label for="nib">Nib width</label><span class="val" id="vNib"></span></div>
+        <input type="range" id="nib" min="0.4" max="6" step="0.1" value="1.5">
+        <div class="chips" id="nibChips">
+          <button class="chip" type="button" data-v="0.8">Fine 0.8</button>
+          <button class="chip" type="button" data-v="1.5">1.5 mm</button>
+          <button class="chip" type="button" data-v="2.3">2.3 mm</button>
+          <button class="chip" type="button" data-v="3.8">Broad 3.8</button>
+        </div>
+      </div>
+
+      <div class="row" id="rowLadder">
+        <div class="row-head"><label id="lblLadder">x-height</label></div>
+        <div class="ladder-wrap">
+          <svg class="ladder" id="ladder" role="slider" tabindex="0"
+               aria-label="x-height in nib widths" aria-valuemin="0.5" aria-valuemax="14" aria-valuenow="5"></svg>
+          <div class="ladder-side">
+            <input class="ladder-big" id="in_ladder" inputmode="decimal" spellcheck="false" aria-label="x-height in nib widths">
+            <div class="ladder-lab">nib widths</div>
+            <div class="ladder-mm" id="ladderMm">= 7.5 mm</div>
+          </div>
+        </div>
+        <p class="note">Stack the squares the way you would ink them off the nib. Click a step, arrow-key it, or type a count — half widths are allowed.</p>
+      </div>
+
+      <div class="row" id="rowXmm" hidden>
+        <div class="row-head"><label for="xmm">x-height</label><span class="val" id="vXmm"></span></div>
+        <input type="range" id="xmm" min="2" max="30" step="0.5" value="7.5">
+      </div>
+
+      <div class="row">
+        <div class="row-head"><label>Proportions</label></div>
+        <div class="seg" id="ratio">
+          <button type="button" data-v="std" aria-pressed="true">Standard 5:3:3</button>
+          <button type="button" data-v="free" aria-pressed="false">Set freely</button>
+        </div>
+        <p class="note" id="ratioNote"></p>
+      </div>
+
+      <div class="row" id="rowAsc">
+        <div class="row-head"><label for="asc">Ascender space</label><span class="val" id="vAsc"></span></div>
+        <input type="range" id="asc" min="0" max="10" step="0.5" value="3">
+      </div>
+      <div class="row" id="rowDesc">
+        <div class="row-head"><label for="desc">Descender space</label><span class="val" id="vDesc"></span></div>
+        <input type="range" id="desc" min="0" max="10" step="0.5" value="3">
+      </div>
+      <div class="row">
+        <div class="row-head"><label for="gap">Space between lines</label><span class="val" id="vGap"></span></div>
+        <input type="range" id="gap" min="0" max="12" step="0.5" value="2">
+      </div>
+    </fieldset>
+
+    <fieldset class="grp">
+      <legend>Slant</legend>
+      <div class="row">
+        <div class="row-head"><label for="slant">Angle from vertical</label><span class="val" id="vSlant"></span></div>
+        <input type="range" id="slant" min="0" max="45" step="1" value="8">
+        <div class="chips" id="slantChips">
+          <button class="chip" type="button" data-v="0">Upright</button>
+          <button class="chip" type="button" data-v="5">Italic 5°</button>
+          <button class="chip" type="button" data-v="10">Italic 10°</button>
+          <button class="chip" type="button" data-v="35">Copperplate</button>
+          <button class="chip" type="button" data-v="38">Spencerian</button>
+        </div>
+        <p class="note">Measured off vertical, so 35° here is the 55° off the baseline that copperplate guides usually quote.</p>
+      </div>
+      <label class="check"><input type="checkbox" id="showSlant" checked> Draw slant guides</label>
+      <div class="row">
+        <div class="row-head"><label for="slantSp">Guide spacing</label><span class="val" id="vSlantSp"></span></div>
+        <input type="range" id="slantSp" min="3" max="40" step="1" value="12">
+      </div>
+    </fieldset>
+
+    <fieldset class="grp">
+      <legend>Guide lines</legend>
+      <label class="check"><input type="checkbox" id="showAsc" checked> Ascender line</label>
+      <label class="check"><input type="checkbox" id="showWaist" checked> Waist line</label>
+      <label class="check"><input type="checkbox" id="showBase" checked> Baseline</label>
+      <label class="check"><input type="checkbox" id="showDesc" checked> Descender line</label>
+      <label class="check"><input type="checkbox" id="heavyBase" checked> Make the baseline heavier</label>
+      <div class="row" style="margin-top:12px">
+        <div class="row-head"><label for="waistStyle">Waist line style</label></div>
+        <select id="waistStyle">
+          <option value="solid">Solid</option>
+          <option value="dashed" selected>Dashed</option>
+        </select>
+      </div>
+    </fieldset>
+
+    <fieldset class="grp">
+      <legend>Printed weight</legend>
+      <div class="row">
+        <div class="row-head"><label for="ink">Ink</label></div>
+        <select id="ink">
+          <option value="#8FD3EE">Non-photo blue — vanishes under writing</option>
+          <option value="#A9BBC9">Pale grey</option>
+          <option value="#6E7A85" selected>Graphite</option>
+          <option value="#4A6FA5">Ink blue</option>
+          <option value="#1A1A1A">Black</option>
+        </select>
+      </div>
+      <div class="row">
+        <div class="row-head"><label for="weight">Line weight</label><span class="val" id="vWeight"></span></div>
+        <input type="range" id="weight" min="0.08" max="0.5" step="0.02" value="0.18">
+      </div>
+      <div class="row">
+        <div class="row-head"><label for="opacity">Line darkness</label><span class="val" id="vOpacity"></span></div>
+        <input type="range" id="opacity" min="15" max="100" step="5" value="75">
+      </div>
+    </fieldset>
+
+    <fieldset class="grp">
+      <legend>Sheet furniture</legend>
+      <div class="row">
+        <div class="row-head"><label for="header">Heading (optional)</label></div>
+        <input type="text" id="header" placeholder="Name ————————  Date ————————">
+      </div>
+      <label class="check"><input type="checkbox" id="footer" checked> Print the settings along the bottom edge</label>
+      <p class="note">Handy when you rule a stack of sheets and later want to know which one you liked.</p>
+    </fieldset>
+  </aside>
+
+  <section class="stage">
+    <div class="sheet" id="sheet"></div>
+    <div class="readout" id="readout"></div>
+  </section>
+</div>
+
+<script>
+const PAGES={
+  letter:{w:215.9,h:279.4,name:"Letter"},
+  a4:{w:210,h:297,name:"A4"},
+  a5:{w:148,h:210,name:"A5"},
+  legal:{w:215.9,h:355.6,name:"Legal"}
+};
+
+const S={
+  page:"letter", landscape:false, margin:16,
+  mode:"nib", nib:1.5,
+  x:5, asc:3, desc:3, gap:2,           // in current unit
+  ratio:"std",                         // std = ascender & descender locked to 3/5 of x-height
+  slant:8, showSlant:true, slantSp:12,
+  showAsc:true, showWaist:true, showBase:true, showDesc:true,
+  heavyBase:true, waistStyle:"dashed",
+  ink:"#6E7A85", weight:0.18, opacity:75,
+  header:"", footer:true
+};
+
+const $=id=>document.getElementById(id);
+const r1=n=>Math.round(n*10)/10;
+const unitMM=()=>S.mode==="nib"?S.nib:1;
+
+/* ---------- nib ladder ---------- */
+const LAD_MAX=14, SQ=13;
+function drawLadder(){
+  const n=S.mode==="nib"?S.x:5;
+  const size=LAD_MAX*SQ;
+  const el=$("ladder");
+  el.setAttribute("viewBox",`0 0 ${size} ${size}`);
+  el.setAttribute("width",size); el.setAttribute("height",size);
+  el.setAttribute("aria-valuenow",fmt(n));
+  const full=Math.floor(n+1e-9), frac=n-full;
+  let s="";
+  for(let k=0;k<LAD_MAX;k++){
+    const x=k*SQ, y=(LAD_MAX-1-k)*SQ;
+    const fill = k%2 ? "#3E7F98" : "#7ED1EE";
+    if(k<full){
+      s+=`<rect x="${x+.5}" y="${y+.5}" width="${SQ-1}" height="${SQ-1}" fill="${fill}"/>`;
+    }else{
+      s+=`<rect x="${x+.5}" y="${y+.5}" width="${SQ-1}" height="${SQ-1}" fill="none" stroke="#26374A" stroke-width="1"/>`;
+      if(k===full && frac>0.02){          // a part nib width, filled from the bottom of its cell
+        const hh=(SQ-1)*frac;
+        s+=`<rect x="${x+.5}" y="${y+.5+(SQ-1-hh)}" width="${SQ-1}" height="${hh}" fill="${fill}"/>`;
+      }
+    }
+  }
+  for(let k=0;k<LAD_MAX;k++)                // full-height hit columns
+    s+=`<rect data-k="${k+1}" x="${k*SQ}" y="0" width="${SQ}" height="${size}" fill="transparent"/>`;
+  el.innerHTML=s;
+}
+function ladderSet(v){ commit("x",Math.round(v*1000)/1000); }
+$("ladder").addEventListener("pointerdown",e=>{
+  const t=e.target.closest("[data-k]"); if(t) ladderSet(+t.dataset.k);
+  $("ladder").focus();
+});
+$("ladder").addEventListener("keydown",e=>{
+  const d={ArrowUp:1,ArrowRight:1,ArrowDown:-1,ArrowLeft:-1}[e.key];
+  if(d===undefined)return;
+  e.preventDefault();
+  const st=e.shiftKey?0.5:1;
+  ladderSet(d>0 ? (Math.floor(S.x/st+1e-9)+1)*st : (Math.ceil(S.x/st-1e-9)-1)*st);
+});
+$("in_ladder").addEventListener("input",()=>{
+  const v=parseFloat($("in_ladder").value.replace(",","."));
+  if(isFinite(v)) commit("x",v);
+});
+$("in_ladder").addEventListener("blur",()=>{$("in_ladder").value=fmt(S.x);});
+$("in_ladder").addEventListener("keydown",e=>{
+  if(e.key==="Enter"){e.target.blur();return;}
+  const d={ArrowUp:1,ArrowDown:-1}[e.key];
+  if(d===undefined)return;
+  e.preventDefault();
+  const st=e.shiftKey?1:0.5;
+  commit("x",Math.round((S.x+d*st)*1000)/1000);
+  $("in_ladder").value=fmt(S.x);
+});
+
+/* ---------- SVG build ---------- */
+function buildSVG(){
+  const p=PAGES[S.page];
+  let W=p.w,H=p.h; if(S.landscape){[W,H]=[H,W];}
+  const m=S.margin, L=m, R=W-m, T=m, B=H-m;
+  const u=unitMM();
+  const xh=S.x*u;
+  const asc=S.asc*u, desc=S.desc*u, gap=S.gap*u;
+  const band=asc+xh+desc;
+
+  const headH = S.header.trim() ? 10 : 0;
+  const footH = S.footer ? 7 : 0;
+  const top = T+headH, bot = B-footH;
+  const avail = bot-top;
+
+  let n = band>0 ? Math.floor((avail+gap)/(band+gap)) : 0;
+  if(!isFinite(n)||n<0) n=0;
+
+  const op=S.opacity/100, w=S.weight, ink=S.ink;
+  let g="";
+
+  const line=(x1,y1,x2,y2,sw,o,dash)=>
+    `<line x1="${r2(x1)}" y1="${r2(y1)}" x2="${r2(x2)}" y2="${r2(y2)}" stroke="${ink}" stroke-width="${r3(sw)}" stroke-opacity="${r3(o)}"${dash?` stroke-dasharray="${dash}"`:""}/>`;
+
+  const bands=[];
+  for(let i=0;i<n;i++){
+    const t0=top+i*(band+gap), waist=t0+asc, base=waist+xh, b1=base+desc;
+    bands.push([t0,b1]);
+    if(S.showAsc&&asc>0) g+=line(L,t0,R,t0,w*.85,op*.6);
+    if(S.showWaist)      g+=line(L,waist,R,waist,w*.9,op*.75, S.waistStyle==="dashed"?"2.2 1.8":null);
+    if(S.showBase)       g+=line(L,base,R,base,S.heavyBase?w*1.7:w,Math.min(1,S.heavyBase?op*1.3:op));
+    if(S.showDesc&&desc>0) g+=line(L,b1,R,b1,w*.85,op*.6);
+  }
+
+  let defs="";
+  if(S.showSlant && n>0){
+    const rad=S.slant*Math.PI/180, t=Math.tan(rad), sp=S.slantSp;
+    defs=`<clipPath id="bands">${bands.map(([a,b])=>
+      `<rect x="${r2(L)}" y="${r2(a)}" width="${r2(R-L)}" height="${r2(b-a)}"/>`).join("")}</clipPath>`;
+    let sl="";
+    for(const [a,b] of bands){
+      const h=b-a, shift=h*t;
+      const start=L-Math.ceil(shift/sp)*sp;
+      for(let xb=start;xb<=R+1e-6;xb+=sp) sl+=line(xb,b,xb+shift,a,w*.8,op*.5);
+    }
+    g+=`<g clip-path="url(#bands)">${sl}</g>`;
+  }
+
+  let extra="";
+  if(headH) extra+=`<text x="${r2(L)}" y="${r2(T+5)}" font-family="Georgia, serif" font-size="4.2" fill="${ink}" fill-opacity="${r3(op*.8)}">${esc(S.header.trim())}</text>`;
+  if(footH) extra+=`<text x="${r2(L)}" y="${r2(B-1.5)}" font-family="Helvetica, Arial, sans-serif" font-size="2.6" fill="${ink}" fill-opacity=".55" letter-spacing=".2">${esc(settingsLine())}</text>`;
+
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${r2(W)} ${r2(H)}">`+
+    `<rect x="0" y="0" width="${r2(W)}" height="${r2(H)}" fill="#ffffff"/>`+
+    (defs?`<defs>${defs}</defs>`:"")+g+extra+`</svg>`;
+
+  return {svg,W,H,n,band,xh};
+}
+const r2=n=>Math.round(n*100)/100, r3=n=>Math.round(n*1000)/1000;
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function settingsLine(){
+  const u=S.mode==="nib"?"nw":"mm";
+  const parts=[
+    PAGES[S.page].name+(S.landscape?" landscape":""),
+    `x-height ${fmt(S.x)}${u}`,
+    S.mode==="nib"?`nib ${S.nib}mm`:null,
+    `asc ${S.asc}${u}`,`desc ${S.desc}${u}`,`gap ${S.gap}${u}`,
+    `slant ${S.slant}°`+(S.showSlant?` @ ${S.slantSp}mm`:" (no guides)"),
+    `margin ${S.margin}mm`
+  ].filter(Boolean);
+  return parts.join("  ·  ");
+}
+
+function applyRatio(){
+  if(S.ratio!=="std") return;
+  const v=Math.round(S.x*0.6*1000)/1000;   // 5 : 3 : 3
+  S.asc=v; S.desc=v;
+  $("asc").value=v; $("desc").value=v;
+}
+
+function render(){
+  applyRatio();
+  drawLadder();
+  const {svg,W,H,n,band,xh}=buildSVG();
+  $("sheet").innerHTML=svg;
+  document.documentElement.style.setProperty("--pw",W+"mm");
+  document.documentElement.style.setProperty("--ph",H+"mm");
+  $("pagestyle").textContent=`@page{size:${W}mm ${H}mm;margin:0}`;
+  const pitch=band+S.gap*unitMM();
+  $("readout").innerHTML = n>0
+    ? `<b>${n}</b> lines &nbsp;·&nbsp; pitch <b>${r2(pitch)} mm</b> &nbsp;·&nbsp; band <b>${r1(band)} mm</b> &nbsp;·&nbsp; x-height <b>${r1(xh)} mm</b> &nbsp;·&nbsp; slant <b>${S.slant}°</b>`
+    : `<span class="warn">Nothing fits — reduce the heights or the margin.</span>`;
+  syncLabels();
+}
+
+/* ---------- numeric fields: drag on a grid, type anything ---------- */
+const FIELDS={
+  margin  :{slider:"margin", val:"vMargin",  grid:1,    lo:0,    hi:80,  unit:"mm"},
+  nib     :{slider:"nib",    val:"vNib",     grid:0.1,  lo:0.05, hi:20,  unit:"mm"},
+  asc     :{slider:"asc",    val:"vAsc",     grid:0.5,  lo:0,    hi:40,  unit:"u"},
+  desc    :{slider:"desc",   val:"vDesc",    grid:0.5,  lo:0,    hi:40,  unit:"u"},
+  gap     :{slider:"gap",    val:"vGap",     grid:0.5,  lo:0,    hi:40,  unit:"u"},
+  slant   :{slider:"slant",  val:"vSlant",   grid:1,    lo:-45,  hi:60,  unit:"°"},
+  slantSp :{slider:"slantSp",val:"vSlantSp", grid:1,    lo:0.5,  hi:80,  unit:"mm"},
+  weight  :{slider:"weight", val:"vWeight",  grid:0.02, lo:0.02, hi:2,   unit:"mm"},
+  opacity :{slider:"opacity",val:"vOpacity", grid:5,    lo:2,    hi:100, unit:"%"},
+  x       :{slider:"xmm",    val:"vXmm",     grid:0.5,  lo:0.5,  hi:60,  unit:"mm", only:"mm"}
+};
+const fmt=v=>String(+(+v).toFixed(3));
+const clamp=(v,f)=>Math.max(f.lo,Math.min(f.hi,v));
+
+function commit(key,v){
+  const f=FIELDS[key];
+  if(!isFinite(v))return;
+  S[key]=clamp(v,f);
+  if(key==="x"&&S.mode==="nib") S[key]=Math.min(S[key],LAD_MAX);
+  const el=$(f.slider);
+  if(S[key]>+el.max) el.max=fmt(S[key]);
+  if(S[key]<+el.min) el.min=fmt(S[key]);
+  el.value=S[key];
+  render();
+}
+
+for(const [key,f] of Object.entries(FIELDS)){
+  const el=$(f.slider);
+  el.step="any";                              // exact thumb placement for typed values
+  el.value=S[key];
+
+  el.addEventListener("input",()=>{           // dragging quantises to the grid
+    const q=Math.round(parseFloat(el.value)/f.grid)*f.grid;
+    commit(key,Math.round(q*1000)/1000);
+  });
+  el.addEventListener("keydown",e=>{
+    const d={ArrowRight:1,ArrowUp:1,ArrowLeft:-1,ArrowDown:-1,PageUp:4,PageDown:-4}[e.key];
+    if(d===undefined)return;
+    e.preventDefault();
+    const st=f.grid*Math.abs(d), cur=S[key];
+    const v=d>0 ? (Math.floor(cur/st+1e-9)+1)*st : (Math.ceil(cur/st-1e-9)-1)*st;
+    commit(key,Math.round(v*1000)/1000);
+  });
+
+  const span=$(f.val);
+  span.innerHTML=`<input class="numin" id="in_${key}" inputmode="decimal" spellcheck="false"`+
+                 ` aria-label="${f.slider} value"><span class="u" id="uu_${key}"></span>`;
+  const inp=$("in_"+key);
+  inp.addEventListener("input",()=>{
+    const v=parseFloat(inp.value.replace(",","."));
+    if(isFinite(v)) commit(key,v);
+  });
+  inp.addEventListener("blur",()=>{inp.value=fmt(S[key]);});
+  inp.addEventListener("keydown",e=>{
+    if(e.key==="Enter"){inp.blur();return;}
+    const d={ArrowUp:1,ArrowDown:-1}[e.key];
+    if(d===undefined)return;
+    e.preventDefault();
+    const st=e.shiftKey?f.grid*4:f.grid;
+    commit(key,Math.round((S[key]+d*st)*1000)/1000);
+    inp.value=fmt(S[key]);
+  });
+}
+
+function syncLabels(){
+  const u=S.mode==="nib"?"nw":"mm";
+  for(const [key,f] of Object.entries(FIELDS)){
+    const inp=$("in_"+key), sfx=$("uu_"+key);
+    if(document.activeElement!==inp) inp.value=fmt(S[key]);
+    inp.size=Math.max(3,inp.value.length);
+    let s = f.unit==="u" ? u : f.unit;
+    if(f.unit==="u" && S.mode==="nib") s += ` (${r2(S[key]*S.nib)} mm)`;
+    sfx.textContent=" "+s;
+  }
+  $("ladderMm").textContent="= "+r2(S.x*S.nib)+" mm";
+  const lin=$("in_ladder");
+  if(document.activeElement!==lin) lin.value=fmt(S.x);
+
+  const locked=S.ratio==="std";
+  $("rowAsc").classList.toggle("derived",locked);
+  $("rowDesc").classList.toggle("derived",locked);
+  $("in_asc").readOnly=locked; $("in_desc").readOnly=locked;
+  $("asc").disabled=locked; $("desc").disabled=locked;
+
+  const pitch=(S.asc+S.x+S.desc+S.gap)*unitMM();
+  $("ratioNote").innerHTML = locked
+    ? `Ascender and descender follow the x-height at 3/5 each — chancery italic proportions. `+
+      `Pitch is <b style="color:var(--accent);font-weight:500">${r2(pitch)} mm</b>; `+
+      `US college ruled is 7.14, wide ruled 8.73.`
+    : `Ascender and descender set independently.`;
+
+  document.querySelectorAll("#slantChips .chip").forEach(c=>
+    c.setAttribute("aria-pressed", +c.dataset.v===S.slant));
+  document.querySelectorAll("#nibChips .chip").forEach(c=>
+    c.setAttribute("aria-pressed", Math.abs(+c.dataset.v-S.nib)<0.02));
+}
+
+const bindCheck=(id,key)=>{const el=$(id);el.checked=S[key];
+  el.addEventListener("change",()=>{S[key]=el.checked;render();});};
+["showSlant","showAsc","showWaist","showBase","showDesc","heavyBase","footer"]
+  .forEach(k=>bindCheck(k,k));
+
+$("page").addEventListener("change",e=>{S.page=e.target.value;render();});
+$("ink").addEventListener("change",e=>{S.ink=e.target.value;render();});
+$("waistStyle").addEventListener("change",e=>{S.waistStyle=e.target.value;render();});
+$("header").addEventListener("input",e=>{S.header=e.target.value;render();});
+
+$("orient").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  S.landscape = b.dataset.v==="l";
+  [...e.currentTarget.children].forEach(c=>c.setAttribute("aria-pressed",c===b));
+  render();
+});
+
+$("ratio").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  S.ratio=b.dataset.v;
+  [...e.currentTarget.children].forEach(c=>c.setAttribute("aria-pressed",c===b));
+  render();
+});
+
+$("slantChips").addEventListener("click",e=>{
+  const b=e.target.closest(".chip"); if(!b)return;
+  commit("slant",+b.dataset.v);
+});
+$("nibChips").addEventListener("click",e=>{
+  const b=e.target.closest(".chip"); if(!b)return;
+  commit("nib",+b.dataset.v);
+});
+
+$("mode").addEventListener("click",e=>{
+  const b=e.target.closest("button"); if(!b)return;
+  const next=b.dataset.v; if(next===S.mode)return;
+  const f = next==="mm" ? S.nib : 1/S.nib;        // exact conversion, keeps the geometry
+  const cv=v=>Math.round(v*f*1000)/1000;
+  ["x","asc","desc","gap"].forEach(k=>S[k]=cv(S[k]));
+  S.mode=next;
+  [...e.currentTarget.children].forEach(c=>c.setAttribute("aria-pressed",c===b));
+  $("rowNib").hidden   = next==="mm";
+  $("rowLadder").hidden= next==="mm";
+  $("rowXmm").hidden   = next==="nib";
+  const mx = next==="mm" ? 40 : 10;
+  ["asc","desc"].forEach(k=>{$(k).max=mx; $(k).value=S[k];});
+  $("gap").max = next==="mm" ? 40 : 12; $("gap").value=S.gap;
+  $("xmm").max = next==="mm" ? 40 : 14; $("xmm").value=S.x;
+  render();
+});
+
+$("btnPrint").addEventListener("click",()=>window.print());
+$("btnSvg").addEventListener("click",()=>{
+  const {svg,W,H}=buildSVG();
+  const out=svg.replace("<svg ",`<svg width="${W}mm" height="${H}mm" `);
+  const blob=new Blob([out],{type:"image/svg+xml"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`ruling-${fmt(S.x)}${S.mode==="nib"?"nw":"mm"}-${S.slant}deg.svg`;
+  a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),2000);
+});
+
+drawLadder(); render();
+</script>
+</body>
+</html>
